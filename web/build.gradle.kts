@@ -3,14 +3,48 @@ plugins {
 }
 
 val webUiDir = rootProject.layout.projectDirectory.dir("web-ui")
+val webUiNodeModulesDir = webUiDir.dir("node_modules")
 val webStaticResourcesDir = layout.projectDirectory.dir("src/main/resources/static")
+val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+val pnpmCommand = if (isWindows) {
+    providers.environmentVariable("PNPM_HOME")
+        .map { pnpmHome -> file("$pnpmHome/pnpm.CMD").absolutePath }
+        .getOrElse("pnpm")
+} else {
+    "pnpm"
+}
+
+fun Exec.configurePnpmCommand(vararg arguments: String) {
+    if (isWindows) {
+        commandLine("cmd", "/c", pnpmCommand, *arguments)
+    } else {
+        commandLine("zsh", "-ic", "pnpm ${arguments.joinToString(" ")}")
+    }
+}
+
+val installWebUiDependencies = tasks.register<Exec>("installWebUiDependencies") {
+    group = "build"
+    description = "Install web-ui dependencies from the lockfile before building static resources."
+
+    workingDir = webUiDir.asFile
+    configurePnpmCommand("install", "--frozen-lockfile")
+
+    inputs.files(
+        webUiDir.file(".npmrc"),
+        webUiDir.file("package.json"),
+        webUiDir.file("pnpm-lock.yaml"),
+        webUiDir.file("pnpm-workspace.yaml")
+    )
+    outputs.dir(webUiNodeModulesDir)
+}
 
 val buildWebUi = tasks.register<Exec>("buildWebUi") {
     group = "build"
     description = "Build web-ui and copy its static output into the web module resources."
 
+    dependsOn(installWebUiDependencies)
     workingDir = webUiDir.asFile
-    commandLine("zsh", "-ic", "pnpm run build")
+    configurePnpmCommand("run", "build")
 
     inputs.files(
         webUiDir.file("package.json"),

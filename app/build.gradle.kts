@@ -9,9 +9,25 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.firebase.crashlytics) apply false
     alias(libs.plugins.baselineprofile)
+}
+
+val hasGoogleServicesJson = listOf(
+    "google-services.json",
+    "src/google-services.json",
+    "src/debug/google-services.json",
+    "src/release/google-services.json",
+).any { relativePath ->
+    project.layout.projectDirectory.file(relativePath).asFile.isFile
+}
+
+if (hasGoogleServicesJson) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+} else {
+    logger.lifecycle("Skipping RikkaHub Firebase plugins because google-services.json is missing.")
 }
 
 android {
