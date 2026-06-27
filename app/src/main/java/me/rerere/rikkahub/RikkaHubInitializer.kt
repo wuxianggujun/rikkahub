@@ -4,9 +4,6 @@ import android.app.Application
 import android.util.Log
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
-import com.google.firebase.Firebase
-import com.google.firebase.remoteconfig.remoteConfig
-import com.google.firebase.remoteconfig.remoteConfigSettings
 import com.whl.quickjs.android.QuickJSLoader
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -88,7 +85,6 @@ object RikkaHubInitializer {
         application.cleanupWorkspaceTempDirs()
         application.checkWorkspaceIntegrity()
         application.syncManagedFiles()
-        initRemoteConfig()
         incrementLaunchCount()
     }
 
@@ -152,20 +148,6 @@ object RikkaHubInitializer {
             }.onFailure { error ->
                 Log.e(TAG, "syncManagedFiles failed", error)
             }
-        }
-    }
-
-    private fun initRemoteConfig() {
-        runCatching {
-            Firebase.remoteConfig.apply {
-                setConfigSettingsAsync(remoteConfigSettings {
-                    minimumFetchIntervalInSeconds = 1800
-                })
-                setDefaultsAsync(R.xml.remote_config_defaults)
-                fetchAndActivate()
-            }
-        }.onFailure { error ->
-            Log.w(TAG, "Remote config unavailable; skipping", error)
         }
     }
 
