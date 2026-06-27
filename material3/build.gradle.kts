@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.library)
-    id("org.jetbrains.kotlin.android")
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -23,7 +22,7 @@ android {
     }
     sourceSets {
         named("main") {
-            kotlin.srcDir("material-color-utilities/kotlin")
+            kotlin.directories.add("material-color-utilities/kotlin")
         }
     }
 }

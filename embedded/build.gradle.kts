@@ -3,10 +3,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     alias(libs.plugins.android.library)
-    id("org.jetbrains.kotlin.android")
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.android.legacy.kapt)
 }
 
 group = "me.rerere.rikkahub"
@@ -37,9 +36,9 @@ android {
     sourceSets {
         getByName("main") {
             manifest.srcFile("src/main/AndroidManifest.xml")
-            kotlin.srcDir("../app/src/main/java")
-            res.srcDir("../app/src/main/res")
-            assets.srcDir("../app/src/main/assets")
+            kotlin.directories.add("../app/src/main/java")
+            res.directories.add("../app/src/main/res")
+            assets.directories.add("../app/src/main/assets")
         }
     }
 
@@ -71,8 +70,10 @@ composeCompiler {
     )
 }
 
-ksp {
-    arg("room.schemaLocation", rootProject.file("app/schemas").absolutePath)
+kapt {
+    arguments {
+        arg("room.schemaLocation", rootProject.file("app/schemas").absolutePath)
+    }
 }
 
 kotlin {
@@ -151,7 +152,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.paging)
-    ksp(libs.androidx.room.compiler)
+    kapt(libs.androidx.room.compiler)
 
     implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)

@@ -6,10 +6,9 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    id("org.jetbrains.kotlin.android")
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.android.legacy.kapt)
     alias(libs.plugins.google.services) apply false
     alias(libs.plugins.firebase.crashlytics) apply false
     alias(libs.plugins.baselineprofile)
@@ -150,8 +149,10 @@ tasks.register("buildAll") {
     description = "Build both APK and AAB"
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
 }
 
 kotlin {
@@ -257,7 +258,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.paging)
     baselineProfile(project(":app:baselineprofile"))
-    ksp(libs.androidx.room.compiler)
+    kapt(libs.androidx.room.compiler)
 
     // Paging3
     implementation(libs.androidx.paging.runtime)

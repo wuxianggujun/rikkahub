@@ -3,7 +3,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     alias(libs.plugins.android.library)
-    id("org.jetbrains.kotlin.android")
     alias(libs.plugins.kotlin.serialization)
 }
 
