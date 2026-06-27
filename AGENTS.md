@@ -14,7 +14,6 @@
 ```
 
 构建应用需要在 `app/` 下提供 `google-services.json`（用于 Firebase）。
-`web` 模块会在 `preBuild` 阶段构建 `web-ui/` 并复制静态资源，需要本地可用 `pnpm`。
 
 ## Coding Style & Naming Conventions
 
@@ -43,8 +42,6 @@
 - **material3**: Material color utility extensions used by the app UI
 - **search**: Search functionality SDK for multiple providers (Exa, Tavily, Zhipu, Bing, Brave, SearXNG, and others)
 - **speech**: Speech module for TTS and ASR implementations
-- **web**: Embedded web server module that provides Ktor server startup function and hosts static frontend build files (
-  built from web-ui/ React project)
 - **workspace**: Sandboxed per-workspace file system and shell execution environment exposed to the AI as tools.
 
 ## Concepts

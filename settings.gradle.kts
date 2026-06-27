@@ -79,13 +79,13 @@ dependencyResolutionManagement {
 
 rootProject.name = "rikkahub"
 include(":app")
+include(":embedded")
 include(":highlight")
 include(":ai")
 include(":search")
 include(":speech")
 include(":common")
 include(":document")
-include(":web")
 include(":material3")
 include(":workspace")
 include(":app:baselineprofile")

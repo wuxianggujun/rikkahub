@@ -42707,7 +42707,6 @@ SPLme/rerere/rikkahub/RikkaHubApp;->incrementLaunchCount()V
 SPLme/rerere/rikkahub/RikkaHubApp;->onCreate$lambda$0(Lme/rerere/rikkahub/RikkaHubApp;Lorg/koin/core/KoinApplication;)Lkotlin/Unit;
 SPLme/rerere/rikkahub/RikkaHubApp;->onCreate$lambda$1$0(Lcom/google/firebase/remoteconfig/FirebaseRemoteConfigSettings$Builder;)Lkotlin/Unit;
 SPLme/rerere/rikkahub/RikkaHubApp;->onCreate()V
-SPLme/rerere/rikkahub/RikkaHubApp;->startWebServerIfEnabled()V
 SPLme/rerere/rikkahub/RikkaHubApp;->syncManagedFiles()V
 Lme/rerere/rikkahub/RikkaHubApp$$ExternalSyntheticLambda0;
 SPLme/rerere/rikkahub/RikkaHubApp$$ExternalSyntheticLambda0;-><init>(Lme/rerere/rikkahub/RikkaHubApp;)V
@@ -42735,10 +42734,6 @@ Lme/rerere/rikkahub/RikkaHubApp$incrementLaunchCount$1;
 SPLme/rerere/rikkahub/RikkaHubApp$incrementLaunchCount$1;-><init>(Lme/rerere/rikkahub/RikkaHubApp;Lkotlin/coroutines/Continuation;)V
 SPLme/rerere/rikkahub/RikkaHubApp$incrementLaunchCount$1;->create(Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Lkotlin/coroutines/Continuation;
 SPLme/rerere/rikkahub/RikkaHubApp$incrementLaunchCount$1;->invokeSuspend(Ljava/lang/Object;)Ljava/lang/Object;
-Lme/rerere/rikkahub/RikkaHubApp$startWebServerIfEnabled$1;
-SPLme/rerere/rikkahub/RikkaHubApp$startWebServerIfEnabled$1;-><init>(Lme/rerere/rikkahub/RikkaHubApp;Lkotlin/coroutines/Continuation;)V
-SPLme/rerere/rikkahub/RikkaHubApp$startWebServerIfEnabled$1;->create(Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Lkotlin/coroutines/Continuation;
-SPLme/rerere/rikkahub/RikkaHubApp$startWebServerIfEnabled$1;->invokeSuspend(Ljava/lang/Object;)Ljava/lang/Object;
 Lme/rerere/rikkahub/RikkaHubApp$syncManagedFiles$1;
 SPLme/rerere/rikkahub/RikkaHubApp$syncManagedFiles$1;-><init>(Lme/rerere/rikkahub/RikkaHubApp;Lkotlin/coroutines/Continuation;)V
 SPLme/rerere/rikkahub/RikkaHubApp$syncManagedFiles$1;->create(Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Lkotlin/coroutines/Continuation;
@@ -46166,7 +46161,6 @@ SPLme/rerere/rikkahub/utils/Version;->unbox-impl()Ljava/lang/String;
 Lme/rerere/rikkahub/utils/Version$Companion;
 SPLme/rerere/rikkahub/utils/Version$Companion;-><init>()V
 SPLme/rerere/rikkahub/utils/Version$Companion;-><init>(Lkotlin/jvm/internal/DefaultConstructorMarker;)V
-Lme/rerere/rikkahub/web/WebServerManager;
 Lme/rerere/search/SearchCommonOptions;
 SPLme/rerere/search/SearchCommonOptions;-><clinit>()V
 SPLme/rerere/search/SearchCommonOptions;-><init>(I)V
