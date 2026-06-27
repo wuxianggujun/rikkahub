@@ -78,8 +78,32 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "rikkahub"
-include(":app")
-include(":embedded")
+
+fun shouldIncludeStandaloneAppProjects(): Boolean {
+    val explicitProperty = gradle.startParameter.projectProperties["rikkahub.includeStandaloneApp"]
+        ?.toBooleanStrictOrNull() == true
+    val explicitEnv = System.getenv("RIKKAHUB_INCLUDE_STANDALONE_APP")
+        ?.toBooleanStrictOrNull() == true
+    val explicitTask = gradle.startParameter.taskNames.any { taskName ->
+        val normalized = taskName.trim().removePrefix(":")
+        normalized == "app" ||
+            normalized.startsWith("app:") ||
+            normalized == "buildAll"
+    }
+
+    return gradle.parent == null || explicitProperty || explicitEnv || explicitTask
+}
+
+if (shouldIncludeStandaloneAppProjects()) {
+    include(":app")
+    include(":app:baselineprofile")
+} else {
+    logger.lifecycle(
+        "Skipping RikkaHub standalone app projects for embedded build; " +
+            "set -Prikkahub.includeStandaloneApp=true to include them."
+    )
+}
+
 include(":highlight")
 include(":ai")
 include(":search")
@@ -88,4 +112,4 @@ include(":common")
 include(":document")
 include(":material3")
 include(":workspace")
-include(":app:baselineprofile")
+include(":embedded")
