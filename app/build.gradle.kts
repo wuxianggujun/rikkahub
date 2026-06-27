@@ -40,6 +40,7 @@ android {
         targetSdk = 37
         versionCode = 165
         versionName = "2.3.2"
+        buildConfigField("boolean", "ENABLE_DOCUMENT_PROMPT_PARSERS", "true")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

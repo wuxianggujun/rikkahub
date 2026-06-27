@@ -84,17 +84,18 @@ fun shouldIncludeStandaloneAppProjects(): Boolean {
         ?.toBooleanStrictOrNull() == true
     val explicitEnv = System.getenv("RIKKAHUB_INCLUDE_STANDALONE_APP")
         ?.toBooleanStrictOrNull() == true
-    val explicitTask = gradle.startParameter.taskNames.any { taskName ->
-        val normalized = taskName.trim().removePrefix(":")
-        normalized == "app" ||
-            normalized.startsWith("app:") ||
-            normalized == "buildAll"
-    }
-
-    return gradle.parent == null || explicitProperty || explicitEnv || explicitTask
+    return gradle.parent == null || explicitProperty || explicitEnv
 }
 
-if (shouldIncludeStandaloneAppProjects()) {
+fun isProjectTaskRequested(projectName: String): Boolean =
+    gradle.startParameter.taskNames.any { taskName ->
+        val normalized = taskName.trim().removePrefix(":")
+        normalized == projectName || normalized.startsWith("$projectName:")
+    }
+
+val includeStandaloneAppProjects = shouldIncludeStandaloneAppProjects()
+
+if (includeStandaloneAppProjects) {
     include(":app")
     include(":app:baselineprofile")
 } else {
@@ -109,7 +110,9 @@ include(":ai")
 include(":search")
 include(":speech")
 include(":common")
-include(":document")
+if (includeStandaloneAppProjects || isProjectTaskRequested("document")) {
+    include(":document")
+}
 include(":material3")
 include(":workspace")
 include(":embedded")

@@ -1,1 +1,5 @@
 -keep class com.artifex.mupdf.** {*;}
+-keep class me.rerere.document.PdfParser { *; }
+-keep class me.rerere.document.DocxParser { *; }
+-keep class me.rerere.document.PptxParser { *; }
+-keep class me.rerere.document.EpubParser { *; }

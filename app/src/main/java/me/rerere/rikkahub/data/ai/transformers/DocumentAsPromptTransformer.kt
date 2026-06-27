@@ -6,11 +6,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
-import me.rerere.document.DocxParser
-import me.rerere.document.EpubParser
-import me.rerere.document.PdfParser
-import me.rerere.document.PptxParser
+import me.rerere.rikkahub.BuildConfig
 import java.io.File
+
+private const val MIME_PDF = "application/pdf"
+private const val MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+private const val MIME_PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+private const val MIME_EPUB = "application/epub+zip"
 
 object DocumentAsPromptTransformer : InputMessageTransformer {
     override suspend fun transform(
@@ -44,19 +46,26 @@ object DocumentAsPromptTransformer : InputMessageTransformer {
     }
 
     private fun parsePdfAsText(file: File): String {
-        return PdfParser.parserPdf(file)
+        return invokeDocumentParser("me.rerere.document.PdfParser", "parserPdf", file)
     }
 
     private fun parseDocxAsText(file: File): String {
-        return DocxParser.parse(file)
+        return invokeDocumentParser("me.rerere.document.DocxParser", "parse", file)
     }
 
     private fun parsePptxAsText(file: File): String {
-        return PptxParser.parse(file)
+        return invokeDocumentParser("me.rerere.document.PptxParser", "parse", file)
     }
 
     private fun parseEpubAsText(file: File): String {
-        return EpubParser.parse(file)
+        return invokeDocumentParser("me.rerere.document.EpubParser", "parse", file)
+    }
+
+    private fun invokeDocumentParser(className: String, methodName: String, file: File): String {
+        val parserClass = Class.forName(className)
+        val parser = parserClass.getField("INSTANCE").get(null)
+        val method = parserClass.getMethod(methodName, File::class.java)
+        return method.invoke(parser, file) as? String ?: ""
     }
 
     // 上传文件保存在 filesDir/upload 下, 该目录通过 proot 挂载到 workspace 的 /upload
@@ -75,14 +84,25 @@ object DocumentAsPromptTransformer : InputMessageTransformer {
         }
         return runCatching {
             when (document.mime) {
-                "application/pdf" -> parsePdfAsText(file)
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> parseDocxAsText(file)
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation" -> parsePptxAsText(file)
-                "application/epub+zip" -> parseEpubAsText(file)
+                MIME_PDF -> readStructuredDocument(document, file, ::parsePdfAsText)
+                MIME_DOCX -> readStructuredDocument(document, file, ::parseDocxAsText)
+                MIME_PPTX -> readStructuredDocument(document, file, ::parsePptxAsText)
+                MIME_EPUB -> readStructuredDocument(document, file, ::parseEpubAsText)
                 else -> file.readText()
             }
         }.getOrElse {
             "[ERROR, failed to read file: ${document.fileName}]"
         }
+    }
+
+    private fun readStructuredDocument(
+        document: UIMessagePart.Document,
+        file: File,
+        parser: (File) -> String,
+    ): String {
+        if (!BuildConfig.ENABLE_DOCUMENT_PROMPT_PARSERS) {
+            return "[ERROR, document parsing disabled in this build: ${document.fileName}]"
+        }
+        return parser(file)
     }
 }

@@ -21,6 +21,7 @@ android {
         consumerProguardFiles("../app/proguard-rules.pro")
         buildConfigField("String", "VERSION_NAME", "\"2.3.2\"")
         buildConfigField("String", "VERSION_CODE", "\"165\"")
+        buildConfigField("boolean", "ENABLE_DOCUMENT_PROMPT_PARSERS", "false")
     }
 
     compileOptions {
@@ -169,7 +170,6 @@ dependencies {
     implementation(libs.sqlite.android)
 
     implementation(project(":ai"))
-    implementation(project(":document"))
     implementation(project(":highlight"))
     implementation(project(":search"))
     implementation(project(":speech"))
