@@ -8,6 +8,7 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.media.MediaScannerConnection
 
 import android.net.Uri
 import android.os.Build
@@ -151,10 +152,7 @@ fun Context.exportImage(
             outputStream = FileOutputStream(image)
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
 
-            // 通知图库更新
-            val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-            mediaScanIntent.data = Uri.fromFile(image)
-            sendBroadcast(mediaScanIntent)
+            MediaScannerConnection.scanFile(this, arrayOf(image.absolutePath), arrayOf("image/png"), null)
         }
         Log.i(TAG, "Image saved successfully: $fileName")
     } catch (e: Exception) {
@@ -204,10 +202,7 @@ fun Context.exportImageFile(
             val image = File(imagesDir, fileName)
             file.copyTo(image, overwrite = true)
 
-            // 通知图库更新
-            val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-            mediaScanIntent.data = Uri.fromFile(image)
-            sendBroadcast(mediaScanIntent)
+            MediaScannerConnection.scanFile(this, arrayOf(image.absolutePath), arrayOf("image/png"), null)
         }
         Log.i(TAG, "Image file saved successfully: $fileName")
     } catch (e: Exception) {

@@ -5,9 +5,11 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.os.Build
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import androidx.core.net.toUri
 import com.termux.terminal.TerminalEmulator
@@ -249,10 +251,14 @@ internal class WorkspaceTerminalViewClient(
 
     fun focusAndShowKeyboard() {
         val view = terminalView ?: return
-        val inputMethodManager = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         view.post {
             view.requestFocus()
-            inputMethodManager.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                view.windowInsetsController?.show(WindowInsets.Type.ime())
+            } else {
+                val inputMethodManager = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                inputMethodManager.showSoftInput(view, SHOW_SOFT_INPUT_DEFAULT_FLAGS)
+            }
         }
     }
 
@@ -315,6 +321,7 @@ internal class WorkspaceTerminalViewClient(
 
 private const val WORKSPACE_DIR = "/workspace"
 private const val SKILLS_DIR = "/skills"
+private const val SHOW_SOFT_INPUT_DEFAULT_FLAGS = 0
 
 // 一个 URL 最多还原跨越的软换行行数(向上/向下各算), 足够覆盖任意真实 URL
 private const val URL_MAX_WRAP_ROWS = 50

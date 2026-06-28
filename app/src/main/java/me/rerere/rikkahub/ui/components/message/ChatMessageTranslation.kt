@@ -53,6 +53,8 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.richtext.MarkdownBlock
 import java.util.Locale
 
+private val SPANISH_LOCALE: Locale = Locale.forLanguageTag("es-ES")
+
 @Composable
 fun LanguageSelectionDialog(
     onLanguageSelected: (Locale) -> Unit,
@@ -69,7 +71,7 @@ fun LanguageSelectionDialog(
             Locale.KOREAN,
             Locale.FRENCH,
             Locale.GERMAN,
-            Locale("es", "ES"),
+            SPANISH_LOCALE,
             Locale.ITALIAN,
         )
     }
@@ -86,7 +88,7 @@ fun LanguageSelectionDialog(
             Locale.FRENCH -> stringResource(R.string.language_french)
             Locale.GERMAN -> stringResource(R.string.language_german)
             Locale.ITALIAN -> stringResource(R.string.language_italian)
-            Locale("es", "ES") -> stringResource(R.string.language_spanish)
+            SPANISH_LOCALE -> stringResource(R.string.language_spanish)
             else -> locale.getDisplayLanguage(Locale.getDefault())
         }
     }
