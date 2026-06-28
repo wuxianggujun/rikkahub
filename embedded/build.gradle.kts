@@ -46,7 +46,7 @@ android {
 
     @Suppress("UnstableApiUsage")
     androidResources {
-        ignoreAssetsPattern = "simple_dict"
+        ignoreAssetsPattern = "simple_dict:banner"
     }
 
     packaging {
