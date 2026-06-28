@@ -22,6 +22,7 @@ android {
         buildConfigField("String", "VERSION_NAME", "\"2.3.2\"")
         buildConfigField("String", "VERSION_CODE", "\"165\"")
         buildConfigField("boolean", "ENABLE_DOCUMENT_PROMPT_PARSERS", "false")
+        buildConfigField("boolean", "ENABLE_SIMPLE_FTS_TOKENIZER", "false")
     }
 
     compileOptions {
@@ -41,6 +42,11 @@ android {
             res.directories.add("../app/src/main/res")
             assets.directories.add("../app/src/main/assets")
         }
+    }
+
+    @Suppress("UnstableApiUsage")
+    androidResources {
+        ignoreAssetsPattern = "simple_dict"
     }
 
     packaging {

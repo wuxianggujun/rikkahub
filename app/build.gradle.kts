@@ -41,6 +41,7 @@ android {
         versionCode = 165
         versionName = "2.3.2"
         buildConfigField("boolean", "ENABLE_DOCUMENT_PROMPT_PARSERS", "true")
+        buildConfigField("boolean", "ENABLE_SIMPLE_FTS_TOKENIZER", "true")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

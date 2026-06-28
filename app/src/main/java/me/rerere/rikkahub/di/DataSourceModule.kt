@@ -43,6 +43,59 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+private const val TAG = "DataSourceModule"
+
+private fun configureSimpleTokenizer(context: Context, db: SupportSQLiteDatabase) {
+    val dictDir = SimpleDictManager.extractDict(context)
+    val cursor = db.query("SELECT jieba_dict(?)", arrayOf(dictDir.absolutePath))
+    cursor.use {
+        if (it.moveToFirst()) {
+            val result = it.getString(0)
+            val success = result?.trimEnd('/') == dictDir.absolutePath.trimEnd('/')
+            if (!success) {
+                android.util.Log.e(TAG, "jieba_dict failed: $result, path=${dictDir.absolutePath}")
+            }
+        }
+    }
+}
+
+private fun SupportSQLiteDatabase.createMessageFtsTable(useSimpleTokenizer: Boolean) {
+    if (!useSimpleTokenizer && isMessageFtsUsingSimpleTokenizer()) {
+        runCatching {
+            execSQL("DROP TABLE IF EXISTS message_fts")
+        }.onFailure { error ->
+            android.util.Log.w(TAG, "failed to drop legacy simple message_fts table", error)
+        }
+    }
+
+    val tokenizer = if (useSimpleTokenizer) "simple" else "unicode61"
+    execSQL(
+        """
+        CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(
+            text,
+            node_id UNINDEXED,
+            message_id UNINDEXED,
+            conversation_id UNINDEXED,
+            title UNINDEXED,
+            update_at UNINDEXED,
+            tokenize = '$tokenizer'
+        )
+        """.trimIndent()
+    )
+}
+
+private fun SupportSQLiteDatabase.isMessageFtsUsingSimpleTokenizer(): Boolean {
+    val cursor = query("SELECT sql FROM sqlite_master WHERE type='table' AND name='message_fts'")
+    return cursor.use {
+        if (!it.moveToFirst()) return@use false
+        val sql = it.getString(0).orEmpty()
+        "tokenize = 'simple'" in sql ||
+            "tokenize='simple'" in sql ||
+            "tokenize = \"simple\"" in sql ||
+            "tokenize=\"simple\"" in sql
+    }
+}
+
 val dataSourceModule = module {
     single {
         SettingsStore(context = get(), scope = get())
@@ -50,54 +103,37 @@ val dataSourceModule = module {
 
     single {
         val context: Context = get()
-        Room.databaseBuilder(context, AppDatabase::class.java, "rikka_hub")
+        val databaseBuilder = Room.databaseBuilder(context, AppDatabase::class.java, "rikka_hub")
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .addMigrations(Migration_6_7, Migration_11_12, Migration_13_14, Migration_14_15, Migration_15_16)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: SupportSQLiteDatabase) {
-                    val dictDir = SimpleDictManager.extractDict(context)
-                    val cursor = db.query("SELECT jieba_dict(?)", arrayOf(dictDir.absolutePath))
-                    cursor.use {
-                        if (it.moveToFirst()) {
-                            val result = it.getString(0)
-                            val success = result?.trimEnd('/') == dictDir.absolutePath.trimEnd('/')
-                            if (!success) {
-                                android.util.Log.e(
-                                    "DataSourceModule",
-                                    "jieba_dict failed: $result, path=${dictDir.absolutePath}"
-                                )
-                            }
-                        }
+                    if (BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER) {
+                        configureSimpleTokenizer(context, db)
                     }
-                    db.execSQL(
-                        """
-                        CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(
-                            text,
-                            node_id UNINDEXED,
-                            message_id UNINDEXED,
-                            conversation_id UNINDEXED,
-                            title UNINDEXED,
-                            update_at UNINDEXED,
-                            tokenize = 'simple'
-                        )
-                        """.trimIndent()
-                    )
+                    db.createMessageFtsTable(BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER)
                 }
             })
-            .openHelperFactory(
+
+        if (BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER) {
+            databaseBuilder.openHelperFactory(
                 RequerySQLiteOpenHelperFactory(
                     listOf(
-                RequerySQLiteOpenHelperFactory.ConfigurationOptions { options ->
-                    options.customExtensions.add(
-                        SQLiteCustomExtension(
-                            context.applicationInfo.nativeLibraryDir + "/libsimple",
-                            null
-                        )
+                        RequerySQLiteOpenHelperFactory.ConfigurationOptions { options ->
+                            options.customExtensions.add(
+                                SQLiteCustomExtension(
+                                    context.applicationInfo.nativeLibraryDir + "/libsimple",
+                                    null
+                                )
+                            )
+                            options
+                        }
                     )
-                    options
-                }
-            )))
-            .build()
+                )
+            )
+        }
+
+        databaseBuilder.build()
     }
 
     single {

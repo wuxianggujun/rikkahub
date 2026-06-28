@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.BuildConfig
 import me.rerere.rikkahub.data.db.AppDatabase
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.MessageNode
@@ -66,17 +67,34 @@ class MessageFtsManager(private val database: AppDatabase) {
         keyword: String,
         sort: MessageSearchSort = MessageSearchSort.RELEVANCE,
     ): List<MessageSearchResult> = withContext(Dispatchers.IO) {
+        if (keyword.isBlank()) return@withContext emptyList()
+
         val results = mutableListOf<MessageSearchResult>()
+        val snippetExpression = if (BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER) {
+            "simple_snippet(message_fts, 0, '[', ']', '...', 30)"
+        } else {
+            "snippet(message_fts, 0, '[', ']', '...', 30)"
+        }
+        val matchExpression = if (BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER) {
+            "jieba_query(?)"
+        } else {
+            "?"
+        }
+        val matchQuery = if (BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER) {
+            keyword
+        } else {
+            keyword.toUnicodeFtsQuery()
+        }
         val cursor = db.query(
             """
             SELECT node_id, message_id, conversation_id, title, update_at,
-                   simple_snippet(message_fts, 0, '[', ']', '...', 30) AS snippet
+                   $snippetExpression AS snippet
             FROM message_fts
-            WHERE text MATCH jieba_query(?)
+            WHERE text MATCH $matchExpression
             ORDER BY ${sort.orderBy}
             LIMIT 50
             """.trimIndent(),
-            arrayOf(keyword)
+            arrayOf(matchQuery)
         )
         Log.i(TAG, "search: $keyword")
         cursor.use {
@@ -101,3 +119,10 @@ private fun UIMessage.extractFtsText(): String =
     parts.filterIsInstance<UIMessagePart.Text>()
         .joinToString("\n") { it.text }
         .take(10_000)
+
+private fun String.toUnicodeFtsQuery(): String =
+    trim()
+        .split(Regex("\\s+"))
+        .filter { it.isNotBlank() }
+        .joinToString(" OR ") { term -> "\"${term.replace("\"", "\"\"")}\"" }
+        .ifBlank { "\"\"" }
