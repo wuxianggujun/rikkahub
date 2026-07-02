@@ -18,7 +18,7 @@ android {
     defaultConfig {
         minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("../app/proguard-rules.pro")
+        consumerProguardFiles("consumer-rules.pro")
         buildConfigField("String", "VERSION_NAME", "\"2.3.2\"")
         buildConfigField("String", "VERSION_CODE", "\"165\"")
         buildConfigField("boolean", "ENABLE_DOCUMENT_PROMPT_PARSERS", "false")
