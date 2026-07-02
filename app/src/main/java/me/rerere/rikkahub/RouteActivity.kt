@@ -104,14 +104,10 @@ import me.rerere.rikkahub.ui.pages.history.HistoryPage
 import me.rerere.rikkahub.ui.pages.imggen.ImageGenPage
 import me.rerere.rikkahub.ui.pages.log.LogPage
 import me.rerere.rikkahub.ui.pages.search.SearchPage
-import me.rerere.rikkahub.ui.pages.setting.SettingAboutPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesPage
-import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesThemePage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesNotificationPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesGeneralPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesUIPage
-import me.rerere.rikkahub.ui.pages.setting.SettingThemePage
-import me.rerere.rikkahub.ui.pages.setting.SettingDonatePage
 import me.rerere.rikkahub.ui.pages.setting.SettingFilesPage
 import me.rerere.rikkahub.ui.pages.setting.SettingMcpPage
 import me.rerere.rikkahub.ui.pages.setting.SettingModelPage
@@ -396,16 +392,8 @@ class RouteActivity : ComponentActivity() {
                                 WebViewPage(key.url, key.content)
                             }
 
-                            entry<Screen.SettingTheme> {
-                                SettingThemePage()
-                            }
-
                             entry<Screen.SettingPreferences> {
                                 SettingPreferencesPage()
-                            }
-
-                            entry<Screen.SettingPreferencesTheme> {
-                                SettingPreferencesThemePage()
                             }
 
                             entry<Screen.SettingPreferencesNotification> {
@@ -433,10 +421,6 @@ class RouteActivity : ComponentActivity() {
                                 SettingModelPage()
                             }
 
-                            entry<Screen.SettingAbout> {
-                                SettingAboutPage()
-                            }
-
                             entry<Screen.SettingSearch> {
                                 SettingSearchPage()
                             }
@@ -452,10 +436,6 @@ class RouteActivity : ComponentActivity() {
 
                             entry<Screen.SettingMcp> {
                                 SettingMcpPage()
-                            }
-
-                            entry<Screen.SettingDonate> {
-                                SettingDonatePage()
                             }
 
                             entry<Screen.SettingFiles> {
@@ -620,13 +600,7 @@ sealed interface Screen : NavKey {
     data class WebView(val url: String = "", val content: String = "") : Screen
 
     @Serializable
-    data object SettingTheme : Screen
-
-    @Serializable
     data object SettingPreferences : Screen
-
-    @Serializable
-    data object SettingPreferencesTheme : Screen
 
     @Serializable
     data object SettingPreferencesNotification : Screen
@@ -647,9 +621,6 @@ sealed interface Screen : NavKey {
     data object SettingModels : Screen
 
     @Serializable
-    data object SettingAbout : Screen
-
-    @Serializable
     data object SettingSearch : Screen
 
     @Serializable
@@ -660,9 +631,6 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object SettingMcp : Screen
-
-    @Serializable
-    data object SettingDonate : Screen
 
     @Serializable
     data object SettingFiles : Screen

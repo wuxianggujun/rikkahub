@@ -1031,10 +1031,16 @@ class ChatService(
     }
 
     private fun getPendingIntent(context: Context, conversationId: Uuid): PendingIntent {
-        val intent = Intent(context, RouteActivity::class.java).apply {
+        val routeIntent = Intent(context, RouteActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("conversationId", conversationId.toString())
         }
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val intent = routeIntent.takeIf { it.resolveActivity(context.packageManager) != null }
+            ?: launchIntent
+            ?: routeIntent
         return PendingIntent.getActivity(
             context,
             conversationId.hashCode(),

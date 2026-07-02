@@ -105,6 +105,7 @@ import me.rerere.rikkahub.ui.components.ui.permission.PermissionManager
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionRecordAudio
 import me.rerere.rikkahub.ui.components.ui.permission.rememberPermissionState
 import me.rerere.rikkahub.ui.context.LocalASRState
+import me.rerere.rikkahub.ui.context.LocalEmbeddedHost
 import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.ChatInputState
@@ -132,6 +133,7 @@ fun ChatInput(
 ) {
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
+    val embeddedHost = LocalEmbeddedHost.current
     val hazeTintColor = MaterialTheme.colorScheme.surfaceContainerLow
     val inputHazeStyle = HazeMaterials.thin(containerColor = hazeTintColor)
 
@@ -184,10 +186,16 @@ fun ChatInput(
     Surface(
         color = Color.Transparent,
     ) {
-        Column(
-            modifier = modifier
+        val insetModifier = if (embeddedHost) {
+            Modifier.imePadding()
+        } else {
+            Modifier
                 .imePadding()
                 .navigationBarsPadding()
+        }
+        Column(
+            modifier = modifier
+                .then(insetModifier)
                 .padding(horizontal = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {

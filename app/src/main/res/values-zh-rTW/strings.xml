@@ -8,6 +8,7 @@
   <string name="about_page_website">官網</string>
   <string name="add">添加</string>
   <string name="app_name">RikkaHub</string>
+  <string name="setting_page_ai_settings">AI 設定</string>
   <string name="asr_button_content_description">語音辨識</string>
   <string name="asr_button_stop">停止</string>
   <string name="assistant_detail_basic_desc">設定名稱、頭像、模型與參數</string>
@@ -337,6 +338,8 @@
   <string name="error_title_send_message">訊息傳送失敗</string>
   <string name="error_title_tool_approval">工具呼叫處理失敗</string>
   <string name="error_title_tool_unavailable">工具無法使用</string>
+  <string name="rikkahub_embedded_init_failed">RikkaHub 啟動失敗</string>
+  <string name="rikkahub_embedded_retry">重試</string>
   <string name="error_title_translate_message">訊息翻譯失敗</string>
   <string name="expand_translation">展開翻譯</string>
   <string name="export_cancel">取消</string>
@@ -629,8 +632,6 @@
   <string name="setting_asr_page_add_provider">新增 ASR 供應商</string>
   <string name="setting_asr_page_default_name">ASR</string>
   <string name="setting_asr_page_edit_provider">編輯 ASR 供應商</string>
-  <string name="setting_display_page_amoled_dark_mode_desc">在暗色主題中使用純黑背景，適合 AMOLED 螢幕</string>
-  <string name="setting_display_page_amoled_dark_mode_title">AMOLED 暗色模式</string>
   <string name="setting_display_page_auto_collapse_thinking_desc">思考完成自動折疊思考內容</string>
   <string name="setting_display_page_auto_collapse_thinking_title">自動折疊思考</string>
   <string name="setting_display_page_auto_play_tts_desc">助理訊息產生完成後自動播放語音</string>
@@ -682,8 +683,6 @@
   <string name="setting_display_page_show_thinking_content_title">顯示思考內容</string>
   <string name="setting_display_page_show_token_usage_desc">顯示token用量和消息數量</string>
   <string name="setting_display_page_show_token_usage_title">顯示Token和上下文統計</string>
-  <string name="setting_display_page_show_updates_desc">是否顯示應用更新通知</string>
-  <string name="setting_display_page_show_updates_title">顯示更新</string>
   <string name="setting_display_page_show_user_avatar_desc">是否在聊天消息中顯示用戶頭像</string>
   <string name="setting_display_page_show_user_avatar_title">顯示用戶頭像</string>
   <string name="setting_display_page_skip_crop_image_desc">匯入圖片或拍照後跳過裁剪介面</string>
@@ -791,8 +790,6 @@
   <string name="setting_page_documentation_desc">查看應用使用說明和幫助文檔</string>
   <string name="setting_page_donate">贊助</string>
   <string name="setting_page_donate_desc">如果你喜歡這個應用，請贊助作者的工作</string>
-  <string name="setting_page_dynamic_color">動態顏色</string>
-  <string name="setting_page_dynamic_color_desc">是否基於桌布動態生成 app 主題配色</string>
   <string name="setting_page_extensions">擴充功能</string>
   <string name="setting_page_extensions_desc">管理提示注入、技能等功能</string>
   <string name="setting_page_general_settings">通用設定</string>
@@ -824,21 +821,6 @@
   <string name="setting_page_sponsor_alert_desc">您已啟動應用程式超過 100 次！如果您喜歡使用它，請考慮支持開發者。</string>
   <string name="setting_page_sponsor_alert_dismiss">稍後再說</string>
   <string name="setting_page_sponsor_alert_title">支援開發者</string>
-  <string name="setting_page_theme_setting">主題</string>
-  <string name="setting_page_theme_setting_desc">自訂應用配色方案</string>
-  <string name="setting_theme_page_preset_themes">預設主題</string>
-  <string name="setting_theme_page_custom_themes">自訂主題</string>
-  <string name="setting_theme_page_add_theme">新增</string>
-  <string name="setting_theme_page_no_custom_themes">尚無自訂主題</string>
-  <string name="setting_theme_page_create_theme">建立主題</string>
-  <string name="setting_theme_page_edit_theme">編輯主題</string>
-  <string name="setting_theme_page_theme_name">主題名稱</string>
-  <string name="setting_theme_page_primary_color">主色</string>
-  <string name="setting_theme_page_secondary_color">輔色</string>
-  <string name="setting_theme_page_tertiary_color">第三色</string>
-  <string name="setting_theme_page_preview">預覽</string>
-  <string name="setting_theme_page_save">儲存</string>
-  <string name="setting_theme_page_dynamic_color_hint">動態顏色已開啟，請在偏好設定 &gt; 主題中關閉以使用自訂主題。</string>
   <string name="setting_page_tts_service">語音服務</string>
   <string name="setting_page_tts_service_desc">配置語音合成與語音識別服務提供商</string>
   <string name="setting_page_tts_settings">TTS設定</string>
@@ -1081,11 +1063,6 @@
   <string name="video">影片</string>
   <string name="web_search_disabled">已禁用網頁搜尋</string>
   <string name="web_search_enabled">已啟用網頁搜尋</string>
-  <string name="setting_theme_page_import_theme">匯入</string>
-  <string name="setting_theme_page_export_success">主題 JSON 已複製到剪貼簿</string>
-  <string name="setting_theme_page_import_success">主題匯入成功</string>
-  <string name="setting_theme_page_delete_theme_title">刪除主題</string>
-  <string name="setting_theme_page_delete_theme_message">確定要刪除此主題嗎？</string>
   <string name="setting_display_page_chat_font_family_custom">自訂</string>
   <string name="setting_display_page_custom_font_import">匯入自訂字型</string>
   <string name="setting_display_page_custom_font_import_failed">匯入字型失敗：%1$s</string>
@@ -1095,8 +1072,6 @@
   <string name="setting_display_page_custom_font_title">自訂字型</string>
   <string name="setting_page_preferences">偏好設定</string>
   <string name="setting_page_preferences_desc">主題、通知、介面與一般設定</string>
-  <string name="setting_page_preferences_theme">主題</string>
-  <string name="setting_page_preferences_theme_desc">動態色彩、主題、AMOLED 深色模式</string>
   <string name="setting_page_preferences_notification">通知</string>
   <string name="setting_page_preferences_notification_desc">更新提醒、訊息產生通知</string>
   <string name="setting_page_preferences_general">一般</string>
