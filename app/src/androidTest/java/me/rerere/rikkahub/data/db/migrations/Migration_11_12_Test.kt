@@ -4,9 +4,9 @@ import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import androidx.room.testing.MigrationTestHelper
-import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.core.TokenUsage
 import me.rerere.ai.ui.UIMessage
@@ -32,7 +32,7 @@ class Migration_11_12_Test {
         InstrumentationRegistry.getInstrumentation(),
         AppDatabase::class.java,
         emptyList(),
-        FrameworkSQLiteOpenHelperFactory()
+        RequerySQLiteOpenHelperFactory(emptyList())
     )
 
     @Test

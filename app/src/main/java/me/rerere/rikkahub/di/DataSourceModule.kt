@@ -59,6 +59,26 @@ private fun configureSimpleTokenizer(context: Context, db: SupportSQLiteDatabase
     }
 }
 
+private fun createRikkaHubOpenHelperFactory(context: Context): RequerySQLiteOpenHelperFactory {
+    val options = if (BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER) {
+        listOf(
+            RequerySQLiteOpenHelperFactory.ConfigurationOptions { sqliteOptions ->
+                sqliteOptions.customExtensions.add(
+                    SQLiteCustomExtension(
+                        context.applicationInfo.nativeLibraryDir + "/libsimple",
+                        null
+                    )
+                )
+                sqliteOptions
+            }
+        )
+    } else {
+        emptyList()
+    }
+
+    return RequerySQLiteOpenHelperFactory(options)
+}
+
 private fun SupportSQLiteDatabase.createMessageFtsTable(useSimpleTokenizer: Boolean) {
     if (!useSimpleTokenizer && isMessageFtsUsingSimpleTokenizer()) {
         runCatching {
@@ -106,6 +126,7 @@ val dataSourceModule = module {
         val databaseBuilder = Room.databaseBuilder(context, AppDatabase::class.java, "rikka_hub")
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .addMigrations(Migration_6_7, Migration_11_12, Migration_13_14, Migration_14_15, Migration_15_16)
+            .openHelperFactory(createRikkaHubOpenHelperFactory(context))
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: SupportSQLiteDatabase) {
                     if (BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER) {
@@ -114,24 +135,6 @@ val dataSourceModule = module {
                     db.createMessageFtsTable(BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER)
                 }
             })
-
-        if (BuildConfig.ENABLE_SIMPLE_FTS_TOKENIZER) {
-            databaseBuilder.openHelperFactory(
-                RequerySQLiteOpenHelperFactory(
-                    listOf(
-                        RequerySQLiteOpenHelperFactory.ConfigurationOptions { options ->
-                            options.customExtensions.add(
-                                SQLiteCustomExtension(
-                                    context.applicationInfo.nativeLibraryDir + "/libsimple",
-                                    null
-                                )
-                            )
-                            options
-                        }
-                    )
-                )
-            )
-        }
 
         databaseBuilder.build()
     }
