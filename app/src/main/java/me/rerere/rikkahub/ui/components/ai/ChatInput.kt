@@ -53,6 +53,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,8 +91,6 @@ import me.rerere.hugeicons.stroke.FullScreen
 import me.rerere.hugeicons.stroke.Zap
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.Settings
-import me.rerere.rikkahub.data.datastore.getCurrentAssistant
-import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.data.datastore.getQuickMessagesOfAssistant
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Assistant
@@ -118,6 +117,11 @@ fun ChatInput(
     state: ChatInputState,
     loading: Boolean,
     settings: Settings,
+    assistant: Assistant,
+    chatModel: Model?,
+    providerAvailable: Boolean,
+    unavailableMessage: String? = null,
+    onConfigureProvider: (() -> Unit)? = null,
     hazeState: HazeState,
     enableSearch: Boolean,
     onToggleSearch: (Boolean) -> Unit,
@@ -132,8 +136,6 @@ fun ChatInput(
     onLongSendClick: () -> Unit,
 ) {
     val toaster = LocalToaster.current
-    val assistant = settings.getCurrentAssistant()
-    val embeddedHost = LocalEmbeddedHost.current
     val hazeTintColor = MaterialTheme.colorScheme.surfaceContainerLow
     val inputHazeStyle = HazeMaterials.thin(containerColor = hazeTintColor)
 
@@ -141,12 +143,14 @@ fun ChatInput(
     val focusManager = LocalFocusManager.current
 
     fun sendMessage() {
+        if (!loading && !providerAvailable) return
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
         if (loading) onCancelClick() else onSendClick()
     }
 
     fun sendMessageWithoutAnswer() {
+        if (!loading && !providerAvailable) return
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
         if (loading) onCancelClick() else onLongSendClick()
@@ -162,6 +166,16 @@ fun ChatInput(
     val asrPermission = rememberPermissionState(PermissionRecordAudio)
     PermissionManager(permissionState = asrPermission)
     var asrBaseText by remember { mutableStateOf("") }
+    var asrSessionToken by remember { mutableStateOf(0L) }
+    val latestProviderAvailable by rememberUpdatedState(providerAvailable)
+    LaunchedEffect(providerAvailable) {
+        if (!providerAvailable) {
+            asrSessionToken += 1
+            if (asrState.isRecording) {
+                asr.stop()
+            }
+        }
+    }
     LaunchedEffect(asrState.status) {
         when (asrState.status) {
             ASRStatus.Listening -> {
@@ -186,7 +200,7 @@ fun ChatInput(
     Surface(
         color = Color.Transparent,
     ) {
-        val insetModifier = if (embeddedHost) {
+        val insetModifier = if (LocalEmbeddedHost.current) {
             Modifier.imePadding()
         } else {
             Modifier
@@ -222,15 +236,25 @@ fun ChatInput(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    if (state.messageContent.isNotEmpty()) {
+                    if (providerAvailable && state.messageContent.isNotEmpty()) {
                         MediaFileInputRow(state = state)
                     }
 
                     TextInputRow(
                         state = state,
+                        assistant = assistant,
                         completionProviders = completionProviders,
+                        enabled = providerAvailable,
                         onSendMessage = { sendMessage() }
                     )
+
+                    if (!providerAvailable) {
+                        ProviderConfigurationRequired(
+                            message = unavailableMessage
+                                ?: stringResource(R.string.chat_provider_not_configured),
+                            onConfigureClick = onConfigureProvider,
+                        )
+                    }
 
                     Row(
                         modifier = Modifier
@@ -260,7 +284,6 @@ fun ChatInput(
                             // Search
                             val enableSearchMsg = stringResource(R.string.web_search_enabled)
                             val disableSearchMsg = stringResource(R.string.web_search_disabled)
-                            val chatModel = settings.getCurrentChatModel()
                             SearchPickerButton(
                                 enableSearch = enableSearch,
                                 settings = settings,
@@ -281,8 +304,7 @@ fun ChatInput(
                             )
 
                             // Reasoning
-                            val model = settings.getCurrentChatModel()
-                            if (model?.abilities?.contains(ModelAbility.REASONING) == true) {
+                            if (chatModel?.abilities?.contains(ModelAbility.REASONING) == true) {
                                 ReasoningButton(
                                     reasoningLevel = assistant.reasoningLevel,
                                     onUpdateReasoningLevel = {
@@ -295,7 +317,8 @@ fun ChatInput(
                         }
 
                         ActionIconButton(
-                            onClick = onMoreClick
+                            onClick = onMoreClick,
+                            enabled = providerAvailable,
                         ) {
                             Icon(
                                 imageVector = HugeIcons.Add01,
@@ -303,26 +326,38 @@ fun ChatInput(
                             )
                         }
 
-                        if (asrState.isAvailable || asrState.isRecording) {
+                        if (asrState.isRecording || (providerAvailable && asrState.isAvailable)) {
                             AsrButton(
                                 state = asrState,
                                 onClick = {
-                                    when (asrState.status) {
-                                        ASRStatus.Listening -> asr.stop()
-                                        ASRStatus.Idle, ASRStatus.Error -> {
-                                            if (!asrPermission.allRequiredPermissionsGranted) {
-                                                asrPermission.requestPermissions()
-                                            } else {
-                                                asrBaseText = state.textContent.text.toString()
-                                                asr.start { transcript ->
-                                                    val spacer =
-                                                        if (asrBaseText.isBlank() || transcript.isBlank()) "" else " "
-                                                    state.setMessageText(asrBaseText + spacer + transcript)
+                                    when {
+                                        asrState.isRecording -> {
+                                            asrSessionToken += 1
+                                            asr.stop()
+                                        }
+                                        providerAvailable -> {
+                                            when (asrState.status) {
+                                                ASRStatus.Idle, ASRStatus.Error -> {
+                                                    if (!asrPermission.allRequiredPermissionsGranted) {
+                                                        asrPermission.requestPermissions()
+                                                    } else {
+                                                        asrBaseText = state.textContent.text.toString()
+                                                        val sessionToken = asrSessionToken + 1
+                                                        asrSessionToken = sessionToken
+                                                        asr.start { transcript ->
+                                                            if (!latestProviderAvailable || sessionToken != asrSessionToken) {
+                                                                return@start
+                                                            }
+                                                            val spacer =
+                                                                if (asrBaseText.isBlank() || transcript.isBlank()) "" else " "
+                                                            state.setMessageText(asrBaseText + spacer + transcript)
+                                                        }
+                                                    }
                                                 }
+
+                                                ASRStatus.Connecting, ASRStatus.Listening, ASRStatus.Stopping -> Unit
                                             }
                                         }
-
-                                        ASRStatus.Connecting, ASRStatus.Stopping -> {}
                                     }
                                 }
                             )
@@ -340,7 +375,7 @@ fun ChatInput(
                                     .testTag("chat_send_button")
                                     .clip(CircleShape)
                                     .combinedClickable(
-                                        enabled = loading || !state.isEmpty(),
+                                        enabled = loading || (providerAvailable && !state.isEmpty()),
                                         onClick = {
                                             sendMessage()
                                         }, onLongClick = {
@@ -350,12 +385,12 @@ fun ChatInput(
                             ) {
                                 val containerColor = when {
                                     loading -> MaterialTheme.colorScheme.errorContainer
-                                    state.isEmpty() -> MaterialTheme.colorScheme.surfaceContainerHigh
+                                    !providerAvailable || state.isEmpty() -> MaterialTheme.colorScheme.surfaceContainerHigh
                                     else -> MaterialTheme.colorScheme.primary
                                 }
                                 val contentColor = when {
                                     loading -> MaterialTheme.colorScheme.onErrorContainer
-                                    state.isEmpty() -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                    !providerAvailable || state.isEmpty() -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                     else -> MaterialTheme.colorScheme.onPrimary
                                 }
                                 Surface(
@@ -392,10 +427,12 @@ fun ChatInput(
 @Composable
 private fun ActionIconButton(
     onClick: () -> Unit,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.size(30.dp),
         shape = CircleShape,
         tonalElevation = 0.dp,
@@ -412,12 +449,13 @@ private fun ActionIconButton(
 @Composable
 private fun TextInputRow(
     state: ChatInputState,
+    assistant: Assistant,
     completionProviders: List<ChatCompletionProvider>,
+    enabled: Boolean,
     onSendMessage: () -> Unit,
 ) {
     val settings = LocalSettings.current
     val filesManager: FilesManager = koinInject()
-    val assistant = settings.getCurrentAssistant()
     val quickMessages = remember(settings.quickMessages, assistant.quickMessageIds) {
         settings.getQuickMessagesOfAssistant(assistant)
     }
@@ -450,6 +488,11 @@ private fun TextInputRow(
 
         var isFocused by remember { mutableStateOf(false) }
         var isFullScreen by remember { mutableStateOf(false) }
+        LaunchedEffect(enabled) {
+            if (!enabled) {
+                isFullScreen = false
+            }
+        }
         var completionList by remember { mutableStateOf<ChatCompletionList?>(null) }
         val receiveContentListener = remember(
             settings.displaySetting.pasteLongTextAsFile, settings.displaySetting.pasteLongTextThreshold
@@ -488,8 +531,8 @@ private fun TextInputRow(
             }
         }
 
-        LaunchedEffect(completionProviders, isFocused) {
-            if (!isFocused || completionProviders.isEmpty()) {
+        LaunchedEffect(completionProviders, enabled, isFocused) {
+            if (!enabled || !isFocused || completionProviders.isEmpty()) {
                 completionList = null
                 return@LaunchedEffect
             }
@@ -539,10 +582,11 @@ private fun TextInputRow(
 
         TextField(
             state = state.textContent,
+            enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("chat_input")
-                .contentReceiver(receiveContentListener)
+                .then(if (enabled) Modifier.contentReceiver(receiveContentListener) else Modifier)
                 .onFocusChanged {
                     isFocused = it.isFocused
                 },
@@ -555,7 +599,7 @@ private fun TextInputRow(
                 imeAction = if (settings.displaySetting.sendOnEnter) ImeAction.Send else ImeAction.Default
             ),
             onKeyboardAction = {
-                if (settings.displaySetting.sendOnEnter && !state.isEmpty()) {
+                if (enabled && settings.displaySetting.sendOnEnter && !state.isEmpty()) {
                     onSendMessage()
                 }
             },
@@ -568,6 +612,7 @@ private fun TextInputRow(
             trailingIcon = {
                 if (isFocused) {
                     IconButton(
+                        enabled = enabled,
                         onClick = {
                             isFullScreen = !isFullScreen
                         }) {
@@ -575,15 +620,41 @@ private fun TextInputRow(
                     }
                 }
             },
-            leadingIcon = if (quickMessages.isNotEmpty()) {
+            leadingIcon = if (enabled && quickMessages.isNotEmpty()) {
                 {
                     QuickMessageButton(quickMessages = quickMessages, state = state)
                 }
             } else null,
         )
         if (isFullScreen) {
-            FullScreenEditor(state = state) {
+            FullScreenEditor(state = state, enabled = enabled) {
                 isFullScreen = false
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProviderConfigurationRequired(
+    message: String,
+    onConfigureClick: (() -> Unit)?,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f),
+        )
+        onConfigureClick?.let { configure ->
+            TextButton(onClick = configure) {
+                Text(stringResource(R.string.chat_provider_configure))
             }
         }
     }
@@ -720,7 +791,9 @@ private fun QuickMessageButton(
 
 @Composable
 private fun FullScreenEditor(
-    state: ChatInputState, onDone: () -> Unit
+    state: ChatInputState,
+    enabled: Boolean,
+    onDone: () -> Unit,
 ) {
     BasicAlertDialog(
         onDismissRequest = {
@@ -760,6 +833,7 @@ private fun FullScreenEditor(
                     }
                     TextField(
                         state = state.textContent,
+                        enabled = enabled,
                         modifier = Modifier
                             .padding(bottom = 2.dp)
                             .fillMaxSize(),

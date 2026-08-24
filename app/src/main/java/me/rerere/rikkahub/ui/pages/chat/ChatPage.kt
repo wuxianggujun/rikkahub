@@ -56,7 +56,6 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.common.android.appTempFolder
 import me.rerere.hugeicons.HugeIcons
@@ -65,10 +64,14 @@ import me.rerere.hugeicons.stroke.LeftToRightListBullet
 import me.rerere.hugeicons.stroke.Menu03
 import me.rerere.hugeicons.stroke.MessageAdd01
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.datastore.Settings
+import me.rerere.rikkahub.data.datastore.findModelById
 import me.rerere.rikkahub.data.datastore.findProvider
+import me.rerere.rikkahub.data.datastore.getAssistantById
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
+import me.rerere.rikkahub.data.datastore.isProviderAvailable
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Conversation
@@ -82,6 +85,7 @@ import me.rerere.rikkahub.ui.components.ui.permission.PermissionCamera
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionManager
 import me.rerere.rikkahub.ui.components.ui.permission.rememberPermissionState
 import me.rerere.rikkahub.ui.context.LocalNavController
+import me.rerere.rikkahub.ui.context.LocalEmbeddedHost
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.context.Navigator
 import me.rerere.rikkahub.ui.hooks.ChatInputState
@@ -111,7 +115,6 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null) {
     val conversation by vm.conversation.collectAsStateWithLifecycle()
     val loadingJob by vm.conversationJob.collectAsStateWithLifecycle()
     val processingStatus by vm.processingStatus.collectAsStateWithLifecycle()
-    val currentChatModel by vm.currentChatModel.collectAsStateWithLifecycle()
     val enableWebSearch by vm.enableWebSearch.collectAsStateWithLifecycle()
     val errors by vm.errors.collectAsStateWithLifecycle()
 
@@ -147,9 +150,17 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null) {
     }
 
     val inputState = vm.inputState
+    val embeddedHost = LocalEmbeddedHost.current
+    val inputAssistant = setting.getAssistantById(conversation.assistantId)
+        ?: setting.getCurrentAssistant()
+    val inputModel = setting.findModelById(inputAssistant.chatModelId ?: setting.chatModelId)
+    val inputProviderAvailable = !embeddedHost || inputModel?.isProviderAvailable(setting.providers) == true
+    val chatInputEnabled = !embeddedHost || (inputModel != null && inputProviderAvailable)
+    var externalInputConsumed by remember(id, files, text) { mutableStateOf(false) }
 
     // 初始化输入状态（处理传入的 files 和 text 参数）
-    LaunchedEffect(files, text) {
+    LaunchedEffect(files, text, chatInputEnabled) {
+        if (!chatInputEnabled || externalInputConsumed) return@LaunchedEffect
         if (files.isNotEmpty()) {
             val localFiles = filesManager.createChatFilesByContents(files)
             val contentTypes = files.mapNotNull { file ->
@@ -174,6 +185,7 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null) {
                 inputState.setMessageText(decodedText)
             }
         }
+        externalInputConsumed = true
     }
 
     val chatListState = rememberLazyListState()
@@ -214,7 +226,6 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null) {
                     vm = vm,
                     chatListState = chatListState,
                     enableWebSearch = enableWebSearch,
-                    currentChatModel = currentChatModel,
                     bigScreen = true,
                     errors = errors,
                     onDismissError = { vm.dismissError(it) },
@@ -246,7 +257,6 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null) {
                     vm = vm,
                     chatListState = chatListState,
                     enableWebSearch = enableWebSearch,
-                    currentChatModel = currentChatModel,
                     bigScreen = false,
                     errors = errors,
                     onDismissError = { vm.dismissError(it) },
@@ -273,7 +283,6 @@ private fun ChatPageContent(
     vm: ChatVM,
     chatListState: LazyListState,
     enableWebSearch: Boolean,
-    currentChatModel: Model?,
     errors: List<ChatError>,
     onDismissError: (Uuid) -> Unit,
     onClearAllErrors: () -> Unit,
@@ -283,8 +292,33 @@ private fun ChatPageContent(
     val workspaceRepository: WorkspaceRepository = koinInject()
     var previewMode by rememberSaveable { mutableStateOf(false) }
     val hazeState = rememberHazeState()
-    val assistant = setting.getCurrentAssistant()
+    val assistant = setting.getAssistantById(conversation.assistantId)
+        ?: setting.getCurrentAssistant()
+    val chatModel = setting.findModelById(assistant.chatModelId ?: setting.chatModelId)
+    val embeddedHost = LocalEmbeddedHost.current
+    val chatProviderAvailable = !embeddedHost || chatModel?.isProviderAvailable(setting.providers) == true
+    val chatModelSelected = chatModel != null
+    val chatInputEnabled = !embeddedHost || (chatModelSelected && chatProviderAvailable)
+    val providerNotConfiguredMessage = stringResource(R.string.chat_provider_not_configured)
+    val modelNotSelectedMessage = stringResource(R.string.chat_model_not_selected)
+    val inputUnavailableMessage = when {
+        embeddedHost && !chatModelSelected -> modelNotSelectedMessage
+        embeddedHost && !chatProviderAvailable -> providerNotConfiguredMessage
+        else -> null
+    }
     var showFilesSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(chatInputEnabled) {
+        if (!chatInputEnabled) {
+            showFilesSheet = false
+        }
+    }
+
+    fun showInputUnavailable() {
+        inputUnavailableMessage?.let {
+            toaster.show(message = it, type = ToastType.Error)
+        }
+    }
 
     val completionProviders = remember(assistant.workspaceId, conversation.workspaceCwd, workspaceRepository) {
         assistant.workspaceId?.let { workspaceId ->
@@ -329,6 +363,15 @@ private fun ChatPageContent(
                     state = inputState,
                     loading = loadingJob != null,
                     settings = setting,
+                    assistant = assistant,
+                    chatModel = chatModel,
+                    providerAvailable = chatInputEnabled,
+                    unavailableMessage = inputUnavailableMessage,
+                    onConfigureProvider = if (chatModelSelected) {
+                        { navController.navigate(Screen.SettingProvider) }
+                    } else {
+                        null
+                    },
                     hazeState = hazeState,
                     completionProviders = completionProviders,
                     onCancelClick = {
@@ -339,8 +382,18 @@ private fun ChatPageContent(
                         vm.updateSettings(setting.copy(enableWebSearch = !enableWebSearch))
                     },
                     onSendClick = {
-                        if (currentChatModel == null) {
-                            toaster.show("请先选择模型", type = ToastType.Error)
+                        if (!chatModelSelected) {
+                            toaster.show(
+                                message = modelNotSelectedMessage,
+                                type = ToastType.Error,
+                            )
+                            return@ChatInput
+                        }
+                        if (!chatProviderAvailable) {
+                            toaster.show(
+                                message = providerNotConfiguredMessage,
+                                type = ToastType.Error,
+                            )
                             return@ChatInput
                         }
                         if (inputState.isEditing()) {
@@ -357,6 +410,20 @@ private fun ChatPageContent(
                         inputState.clearInput()
                     },
                     onLongSendClick = {
+                        if (!chatModelSelected) {
+                            toaster.show(
+                                message = modelNotSelectedMessage,
+                                type = ToastType.Error,
+                            )
+                            return@ChatInput
+                        }
+                        if (!chatProviderAvailable) {
+                            toaster.show(
+                                message = providerNotConfiguredMessage,
+                                type = ToastType.Error,
+                            )
+                            return@ChatInput
+                        }
                         if (inputState.isEditing()) {
                             vm.handleMessageEdit(
                                 parts = inputState.getContents(),
@@ -371,7 +438,7 @@ private fun ChatPageContent(
                         inputState.clearInput()
                     },
                     onUpdateChatModel = {
-                        vm.setChatModel(assistant = setting.getCurrentAssistant(), model = it)
+                        vm.setChatModel(assistant = assistant, model = it)
                     },
                     onUpdateAssistant = {
                         vm.updateSettings(
@@ -394,7 +461,11 @@ private fun ChatPageContent(
                         )
                     },
                     onMoreClick = {
-                        showFilesSheet = true
+                        if (chatInputEnabled) {
+                            showFilesSheet = true
+                        } else {
+                            showInputUnavailable()
+                        }
                     },
                 )
             },
@@ -413,11 +484,19 @@ private fun ChatPageContent(
                 onDismissError = onDismissError,
                 onClearAllErrors = onClearAllErrors,
                 onRegenerate = {
-                    vm.regenerateAtMessage(it)
+                    if (!chatInputEnabled) {
+                        showInputUnavailable()
+                    } else {
+                        vm.regenerateAtMessage(it)
+                    }
                 },
                 onEdit = {
-                    inputState.editingMessage = it.id
-                    inputState.setContents(it.parts)
+                    if (!chatInputEnabled) {
+                        showInputUnavailable()
+                    } else {
+                        inputState.editingMessage = it.id
+                        inputState.setContents(it.parts)
+                    }
                 },
                 onForkMessage = {
                     scope.launch {
@@ -446,11 +525,19 @@ private fun ChatPageContent(
                     vm.saveConversationAsync()
                 },
                 onClickSuggestion = { suggestion ->
-                    inputState.editingMessage = null
-                    inputState.setMessageText(suggestion)
+                    if (!chatInputEnabled) {
+                        showInputUnavailable()
+                    } else {
+                        inputState.editingMessage = null
+                        inputState.setMessageText(suggestion)
+                    }
                 },
                 onTranslate = { message, locale ->
-                    vm.translateMessage(message, locale)
+                    if (!chatInputEnabled) {
+                        showInputUnavailable()
+                    } else {
+                        vm.translateMessage(message, locale)
+                    }
                 },
                 onClearTranslation = { message ->
                     vm.clearTranslationField(message.id)
@@ -462,10 +549,18 @@ private fun ChatPageContent(
                     }
                 },
                 onToolApproval = { toolCallId, approved, reason ->
-                    vm.handleToolApproval(toolCallId, approved, reason)
+                    if (!chatInputEnabled) {
+                        showInputUnavailable()
+                    } else {
+                        vm.handleToolApproval(toolCallId, approved, reason)
+                    }
                 },
                 onToolAnswer = { toolCallId, answer ->
-                    vm.handleToolAnswer(toolCallId, answer)
+                    if (!chatInputEnabled) {
+                        showInputUnavailable()
+                    } else {
+                        vm.handleToolAnswer(toolCallId, answer)
+                    }
                 },
                 onToggleFavorite = { node ->
                     vm.toggleMessageFavorite(node)
@@ -477,13 +572,14 @@ private fun ChatPageContent(
             )
         }
 
-        if (showFilesSheet) {
+        if (showFilesSheet && chatInputEnabled) {
             ChatFilesPickerSheet(
                 inputState = inputState,
                 setting = setting,
                 conversation = conversation,
                 assistant = assistant,
                 vm = vm,
+                providerAvailable = chatInputEnabled,
                 onDismiss = { showFilesSheet = false },
             )
         }
@@ -497,6 +593,7 @@ private fun ChatFilesPickerSheet(
     conversation: Conversation,
     assistant: Assistant,
     vm: ChatVM,
+    providerAvailable: Boolean,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -518,7 +615,9 @@ private fun ChatFilesPickerSheet(
     var cameraOutputFile by remember { mutableStateOf<File?>(null) }
     val (_, launchCameraCrop) = useCropLauncher(
         onCroppedImageReady = { croppedUri ->
-            inputState.addImages(filesManager.createChatFilesByContents(listOf(croppedUri)))
+            if (providerAvailable) {
+                inputState.addImages(filesManager.createChatFilesByContents(listOf(croppedUri)))
+            }
             dismissAll()
         },
         onCleanup = {
@@ -528,7 +627,12 @@ private fun ChatFilesPickerSheet(
         }
     )
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { captureSuccessful ->
-        if (captureSuccessful && cameraOutputUri != null) {
+        if (!providerAvailable) {
+            cameraOutputFile?.delete()
+            cameraOutputFile = null
+            cameraOutputUri = null
+            dismissAll()
+        } else if (captureSuccessful && cameraOutputUri != null) {
             if (setting.displaySetting.skipCropImage) {
                 inputState.addImages(filesManager.createChatFilesByContents(listOf(cameraOutputUri!!)))
                 cameraOutputFile?.delete()
@@ -545,7 +649,9 @@ private fun ChatFilesPickerSheet(
         }
     }
     val onLaunchCamera: () -> Unit = {
-        if (cameraPermission.allRequiredPermissionsGranted) {
+        if (!providerAvailable) {
+            dismissAll()
+        } else if (cameraPermission.allRequiredPermissionsGranted) {
             cameraOutputFile = context.cacheDir.resolve("camera_${Uuid.random()}.jpg")
             cameraOutputUri = FileProvider.getUriForFile(
                 context, "${context.packageName}.fileprovider", cameraOutputFile!!
@@ -559,7 +665,9 @@ private fun ChatFilesPickerSheet(
     var preCropTempFile by remember { mutableStateOf<File?>(null) }
     val (_, launchImageCrop) = useCropLauncher(
         onCroppedImageReady = { croppedUri ->
-            inputState.addImages(filesManager.createChatFilesByContents(listOf(croppedUri)))
+            if (providerAvailable) {
+                inputState.addImages(filesManager.createChatFilesByContents(listOf(croppedUri)))
+            }
             dismissAll()
         },
         onCleanup = {
@@ -569,7 +677,9 @@ private fun ChatFilesPickerSheet(
     )
     val imagePickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { selectedUris ->
-            if (selectedUris.isNotEmpty()) {
+            if (!providerAvailable) {
+                dismissAll()
+            } else if (selectedUris.isNotEmpty()) {
                 Log.d("ImagePickButton", "Selected URIs: $selectedUris")
                 if (setting.displaySetting.skipCropImage) {
                     inputState.addImages(filesManager.createChatFilesByContents(selectedUris))
@@ -597,7 +707,9 @@ private fun ChatFilesPickerSheet(
 
     val videoPickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { selectedUris ->
-            if (selectedUris.isNotEmpty()) {
+            if (!providerAvailable) {
+                dismissAll()
+            } else if (selectedUris.isNotEmpty()) {
                 inputState.addVideos(filesManager.createChatFilesByContents(selectedUris))
                 dismissAll()
             }
@@ -605,7 +717,9 @@ private fun ChatFilesPickerSheet(
 
     val audioPickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { selectedUris ->
-            if (selectedUris.isNotEmpty()) {
+            if (!providerAvailable) {
+                dismissAll()
+            } else if (selectedUris.isNotEmpty()) {
                 inputState.addAudios(filesManager.createChatFilesByContents(selectedUris))
                 dismissAll()
             }
@@ -613,7 +727,9 @@ private fun ChatFilesPickerSheet(
 
     val filePickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-            if (uris.isNotEmpty()) {
+            if (!providerAvailable) {
+                dismissAll()
+            } else if (uris.isNotEmpty()) {
                 val documents = uris.mapNotNull { uri ->
                     val fileName = filesManager.getFileNameFromUri(uri) ?: "file"
                     val mime = filesManager.getFileMimeType(uri) ?: "text/plain"
@@ -681,10 +797,18 @@ private fun ChatFilesPickerSheet(
             onShowCompressDialogChange = { showCompressDialog = it },
             onDismiss = { dismissAll() },
             onTakePic = onLaunchCamera,
-            onPickImage = { imagePickerLauncher.launch("image/*") },
-            onPickVideo = { videoPickerLauncher.launch("video/*") },
-            onPickAudio = { audioPickerLauncher.launch("audio/*") },
-            onPickFile = { filePickerLauncher.launch(arrayOf("*/*")) },
+            onPickImage = {
+                if (providerAvailable) imagePickerLauncher.launch("image/*") else dismissAll()
+            },
+            onPickVideo = {
+                if (providerAvailable) videoPickerLauncher.launch("video/*") else dismissAll()
+            },
+            onPickAudio = {
+                if (providerAvailable) audioPickerLauncher.launch("audio/*") else dismissAll()
+            },
+            onPickFile = {
+                if (providerAvailable) filePickerLauncher.launch(arrayOf("*/*")) else dismissAll()
+            },
         )
     }
 }

@@ -56,6 +56,8 @@ import me.rerere.rikkahub.data.ai.GenerationChunk
 import me.rerere.rikkahub.data.ai.GenerationHandler
 import me.rerere.rikkahub.data.ai.mcp.McpManager
 import me.rerere.rikkahub.data.ai.tools.LocalTools
+import me.rerere.rikkahub.data.ai.embedded.EmbeddedProjectBridgeRegistry
+import me.rerere.rikkahub.data.ai.tools.createEmbeddedProjectTools
 import me.rerere.rikkahub.data.ai.tools.createConversationTools
 import me.rerere.rikkahub.data.ai.tools.createSearchTools
 import me.rerere.rikkahub.data.ai.tools.createSkillTools
@@ -72,11 +74,13 @@ import me.rerere.rikkahub.data.ai.transformers.ThinkTagTransformer
 import me.rerere.rikkahub.data.ai.transformers.TimeReminderTransformer
 import me.rerere.rikkahub.data.ai.transformers.WorkspaceReminderTransformer
 import me.rerere.rikkahub.data.datastore.SettingsStore
+import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.findModelById
 import me.rerere.rikkahub.data.datastore.findProvider
 import me.rerere.rikkahub.data.datastore.getAssistantById
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
+import me.rerere.rikkahub.data.datastore.isProviderAvailable
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.Assistant
@@ -211,6 +215,16 @@ class ChatService(
         sessions.clear()
     }
 
+    /**
+     * Embedded TinaIDE must never send chat content to a model whose provider
+     * is disabled or missing credentials. Standalone RikkaHub keeps its
+     * existing behavior so users can continue drafting offline.
+     */
+    private fun canUseEmbeddedChatModel(settings: Settings, model: Model?): Boolean {
+        return EmbeddedProjectBridgeRegistry.current() == null ||
+            model?.isProviderAvailable(settings.providers) == true
+    }
+
     // ---- Session 管理 ----
 
     private fun getOrCreateSession(conversationId: Uuid): ConversationSession {
@@ -336,6 +350,8 @@ class ChatService(
                 val settings = settingsStore.settingsFlow.first()
                 val assistant = settings.getAssistantById(currentConversation.assistantId)
                     ?: settings.getCurrentAssistant()
+                val model = settings.findModelById(assistant.chatModelId ?: settings.chatModelId)
+                if (!canUseEmbeddedChatModel(settings, model)) return@launch
                 val processedContent = preprocessUserInputParts(content, assistant)
 
                 // 添加消息到列表
@@ -392,6 +408,11 @@ class ChatService(
         val job = appScope.launch {
             try {
                 val conversation = session.state.value
+                val settings = settingsStore.settingsFlow.first()
+                val assistant = settings.getAssistantById(conversation.assistantId)
+                    ?: settings.getCurrentAssistant()
+                val model = settings.findModelById(assistant.chatModelId ?: settings.chatModelId)
+                if (!canUseEmbeddedChatModel(settings, model)) return@launch
 
                 if (message.role == MessageRole.USER) {
                     // 如果是用户消息，则截止到当前消息
@@ -436,6 +457,11 @@ class ChatService(
         val job = appScope.launch {
             try {
                 val conversation = session.state.value
+                val settings = settingsStore.settingsFlow.first()
+                val assistant = settings.getAssistantById(conversation.assistantId)
+                    ?: settings.getCurrentAssistant()
+                val model = settings.findModelById(assistant.chatModelId ?: settings.chatModelId)
+                if (!canUseEmbeddedChatModel(settings, model)) return@launch
                 val newApprovalState = when {
                     answer != null -> ToolApprovalState.Answered(answer)
                     approved -> ToolApprovalState.Approved
@@ -495,6 +521,7 @@ class ChatService(
         val assistant = settings.getAssistantById(initialConversation.assistantId)
             ?: settings.getCurrentAssistant()
         val model = settings.findModelById(assistant.chatModelId ?: settings.chatModelId) ?: return
+        if (!canUseEmbeddedChatModel(settings, model)) return
 
         val senderName = if (assistant.useAssistantAvatar) {
             assistant.name.ifEmpty { context.getString(R.string.assistant_page_default_assistant) }
@@ -560,6 +587,9 @@ class ChatService(
                         addAll(createConversationTools(conversationRepo, assistant.id))
                     }
                     addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), conversation.workspaceCwd))
+                    EmbeddedProjectBridgeRegistry.current()?.let { bridge ->
+                        addAll(createEmbeddedProjectTools(bridge))
+                    }
                     if (assistant.enabledSkills.isNotEmpty()) {
                         addAll(
                             createSkillTools(
@@ -762,6 +792,7 @@ class ChatService(
         runCatching {
             val settings = settingsStore.settingsFlow.first()
             val model = settings.findModelById(settings.titleModelId, fallback = settings.fastModelId) ?: return
+            if (!canUseEmbeddedChatModel(settings, model)) return
             val provider = model.findProvider(settings.providers) ?: return
 
             val providerHandler = providerManager.getProviderByType(provider)
@@ -803,6 +834,7 @@ class ChatService(
             val settings = settingsStore.settingsFlow.first()
             if (!settings.enableSuggestion) return
             val model = settings.findModelById(settings.suggestionModelId, fallback = settings.fastModelId) ?: return
+            if (!canUseEmbeddedChatModel(settings, model)) return
             val provider = model.findProvider(settings.providers) ?: return
 
             sessions[conversationId]?.let { session ->
@@ -855,9 +887,10 @@ class ChatService(
         keepRecentMessages: Int = 32
     ): Result<Unit> = runCatching {
         val settings = settingsStore.settingsFlow.first()
-        val model = settings.findModelById(settings.compressModelId)
+        val configuredModel = settings.findModelById(settings.compressModelId)
             ?: settings.getCurrentChatModel()
-            ?: throw IllegalStateException("No model available for compression")
+        if (!canUseEmbeddedChatModel(settings, configuredModel)) return@runCatching
+        val model = configuredModel ?: throw IllegalStateException("No model available for compression")
         val provider = model.findProvider(settings.providers)
             ?: throw IllegalStateException("Provider not found")
 
@@ -1101,6 +1134,8 @@ class ChatService(
         appScope.launch(Dispatchers.IO) {
             try {
                 val settings = settingsStore.settingsFlow.first()
+                val translationModel = settings.providers.findModelById(settings.translateModeId)
+                if (!canUseEmbeddedChatModel(settings, translationModel)) return@launch
 
                 val messageText = message.parts.filterIsInstance<UIMessagePart.Text>()
                     .joinToString("\n\n") { it.text }
@@ -1168,6 +1203,8 @@ class ChatService(
         val settings = settingsStore.settingsFlow.first()
         val assistant = settings.getAssistantById(currentConversation.assistantId)
             ?: settings.getCurrentAssistant()
+        val model = settings.findModelById(assistant.chatModelId ?: settings.chatModelId)
+        if (!canUseEmbeddedChatModel(settings, model)) return
         val processedParts = preprocessUserInputParts(parts, assistant)
         var edited = false
 

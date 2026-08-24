@@ -234,6 +234,9 @@
   <string name="chain_of_thought_collapse">收起</string>
   <string name="chain_of_thought_show_more_steps">再显示 %d 步</string>
   <string name="chat_input_placeholder">输入消息与AI聊天</string>
+  <string name="chat_provider_not_configured">请先配置已启用且包含凭据的 AI 提供商。</string>
+  <string name="chat_provider_configure">配置提供商</string>
+  <string name="chat_model_not_selected">请先选择聊天模型。</string>
   <string name="chat_input_unsupported_file_type">不支持的文件类型：%s</string>
   <string name="chat_input_file_read_failed">文件读取失败：%s</string>
   <string name="chat_message_add_favorite">添加收藏</string>

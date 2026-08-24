@@ -234,6 +234,9 @@
   <string name="chain_of_thought_collapse">Collapse</string>
   <string name="chain_of_thought_show_more_steps">Show %d more steps</string>
   <string name="chat_input_placeholder">Chat with AI</string>
+  <string name="chat_provider_not_configured">Configure an enabled AI provider with credentials before chatting.</string>
+  <string name="chat_provider_configure">Configure provider</string>
+  <string name="chat_model_not_selected">Select a chat model first.</string>
   <string name="chat_input_unsupported_file_type">Unsupported file type: %s</string>
   <string name="chat_input_file_read_failed">Failed to read file: %s</string>
   <string name="chat_message_add_favorite">Add Favorite</string>
