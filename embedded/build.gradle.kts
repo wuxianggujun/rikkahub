@@ -146,9 +146,7 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.zxing.core)
-    implementation(libs.quickie.bundled)
-    implementation(libs.barcode.scanning)
-    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.exifinterface)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
