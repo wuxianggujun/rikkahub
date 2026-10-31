@@ -129,7 +129,7 @@ fun Mermaid(
                 ) {
                     Icon(
                         HugeIcons.View,
-                        contentDescription = "Preview"
+                        contentDescription = stringResource(R.string.code_block_preview)
                     )
                 }
                 IconButton(
@@ -181,7 +181,7 @@ private fun buildMermaidHtml(
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=1024">
-            <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_VERSION}/dist/mermaid.min.js"></script>
             <style>
                 body {
                     margin: 0;
@@ -207,6 +207,7 @@ private fun buildMermaidHtml(
             <script>
               mermaid.initialize({
                     startOnLoad: true,
+                    securityLevel: 'strict',
                     theme: 'base',
                     themeVariables: {
                         primaryColor: '${primaryColor}',

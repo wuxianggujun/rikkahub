@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Preview</title>
+    <title>{{PREVIEW_TITLE}}</title>
 
     <!-- KaTeX for LaTeX math rendering -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css">
 
     <!-- Highlight.js for syntax highlighting -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.12.0/styles/atom-one-dark.min.css">
 
     <style>
         body {
@@ -173,14 +173,19 @@
 
     <script type="module">
         // Import markdown-it and plugins using esm.sh
-        import MarkdownIt from 'https://esm.sh/markdown-it@14.0.0';
-        import vscodemarkdownItKatex from 'https://esm.sh/@vscode/markdown-it-katex'
+        import MarkdownIt from 'https://esm.sh/markdown-it@15.0.3';
+        import vscodemarkdownItKatex from 'https://esm.sh/@vscode/markdown-it-katex@1.1.2?deps=katex@0.19.1';
         import markdownItTaskLists from 'https://esm.sh/markdown-it-task-lists@2.1.1';
 
-        import katex from 'https://esm.sh/katex@0.16.8';
-        import hljs from 'https://esm.sh/highlight.js@11.9.0';
-        import mermaid from 'https://esm.sh/mermaid@10.6.1';
-        import { Base64 } from 'https://esm.sh/js-base64@3.7.5';
+        import katex from 'https://esm.sh/katex@0.19.1';
+        import 'https://esm.sh/katex@0.19.1/dist/contrib/mhchem.mjs';
+        import hljs from 'https://esm.sh/highlight.js@11.12.0';
+        import mermaid from 'https://esm.sh/mermaid@{{MERMAID_VERSION}}?deps=katex@0.19.1,dompurify@3.4.17';
+        import DOMPurify from 'https://esm.sh/dompurify@3.4.17';
+
+        const decodeBase64 = value => new TextDecoder('utf-8').decode(
+            Uint8Array.from(atob(value), character => character.charCodeAt(0))
+        );
 
         // Configure markdown-it
         const md = new MarkdownIt({
@@ -204,7 +209,13 @@
         });
 
         // Add plugins
-        md.use(vscodemarkdownItKatex);
+        // Share the patched KaTeX instance, including its mhchem extension.
+        md.use(vscodemarkdownItKatex, {
+            katex,
+            trust: false,
+            maxExpand: 1000,
+            maxSize: 20
+        });
 
         md.use(markdownItTaskLists, {
             enabled: true,
@@ -223,7 +234,7 @@
 
             if (info === 'mermaid') {
                 const id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
-                return `<div class="mermaid" id="${id}">${token.content.trim()}</div>\n`;
+                return `<div class="mermaid" id="${id}">${md.utils.escapeHtml(token.content.trim())}</div>\n`;
             }
 
             return defaultFenceRenderer(tokens, idx, options, env, renderer);
@@ -233,13 +244,13 @@
         mermaid.initialize({
             startOnLoad: false,
             theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default',
-            securityLevel: 'loose',
+            securityLevel: 'strict',
             fontFamily: 'inherit'
         });
 
         // The markdown content to render (base64 encoded)
         const markdownBase64 = `{{MARKDOWN_BASE64}}`;
-        let markdownContent = Base64.decode(markdownBase64);
+        let markdownContent = decodeBase64(markdownBase64);
 
         // Convert \[ ... \] to $$ ... $$ for LaTeX block math
         markdownContent = markdownContent.replace(/\\\[([\s\S]*?)\\\]/g, (match, content) => {
@@ -253,7 +264,11 @@
             try {
                 // Process with markdown-it
                 const html = md.render(markdownContent);
-                document.getElementById('content').innerHTML = html;
+                // Markdown may contain raw HTML; never insert it without sanitizing.
+                document.getElementById('content').innerHTML = DOMPurify.sanitize(html, {
+                    FORBID_TAGS: ['style', 'iframe', 'form'],
+                    FORBID_ATTR: ['srcdoc']
+                });
 
                 // Render mermaid diagrams
                 const mermaidElements = document.querySelectorAll('.mermaid');
@@ -263,38 +278,14 @@
                     });
                 }
 
-                // Render KaTeX math
-                document.querySelectorAll('.math.inline').forEach(el => {
-                    try {
-                        katex.render(el.textContent, el, {
-                            throwOnError: false,
-                            errorColor: '#cc0000'
-                        });
-                    } catch (e) {
-                        console.warn('KaTeX inline render error:', e);
-                    }
-                });
-
-                document.querySelectorAll('.math.block').forEach(el => {
-                    try {
-                        katex.render(el.textContent, el, {
-                            displayMode: true,
-                            throwOnError: false,
-                            errorColor: '#cc0000'
-                        });
-                    } catch (e) {
-                        console.warn('KaTeX block render error:', e);
-                    }
-                });
-
                 // Handle external links
                 document.querySelectorAll('a[href^="http"]').forEach(link => {
                     link.target = '_blank';
                     link.rel = 'noopener noreferrer';
                 });
             } catch (error) {
-                console.error('Error rendering markdown:', error);
-                document.getElementById('content').innerHTML = '<p>Error rendering markdown content: ' + error.message + '</p>';
+                console.error('Markdown preview rendering failed:', error.name);
+                document.getElementById('content').textContent = decodeBase64('{{RENDER_ERROR_BASE64}}');
             }
         }
 
@@ -302,7 +293,7 @@
         renderMarkdown();
     </script>
     <script nomodule>
-        alert('您的系统WebView不支持 ES Modules，请升级WebView或者系统!');
+        alert(decodeURIComponent(escape(atob('{{WEBVIEW_UNSUPPORTED_BASE64}}'))));
     </script>
 </body>
 </html>
