@@ -8,7 +8,10 @@ fun resolveTinaNativeAbis(): List<String> {
     val allAbiRequested = when {
         allAbiProperty != null -> allAbiProperty.equals("true", ignoreCase = true)
         System.getenv("CI")?.equals("true", ignoreCase = true) == true -> true
-        else -> gradle.startParameter.taskNames.any { it.contains("AllAbi", ignoreCase = true) }
+        // The host task is not in an included build's own start parameters.
+        else -> generateSequence(gradle) { it.parent }
+            .flatMap { it.startParameter.taskNames.asSequence() }
+            .any { it.contains("AllAbi", ignoreCase = true) }
     }
     if (allAbiRequested) return listOf("arm64-v8a", "x86_64")
 
