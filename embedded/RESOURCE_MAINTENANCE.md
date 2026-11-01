@@ -126,3 +126,22 @@ py -3 -X utf8 embedded/tests/check_web_previews.py
 发布时先提交并推送本子模块，再提交主仓库 gitlink。
 不要用整体重置子模块的方式回退资源改动，否则会丢失 TinaIDE 适配；
 安全相关版本不可为了恢复旧视觉效果一起回退到有公告的旧版本。
+
+## 2026-11-01：同步上游纯 AGPL-3.0 许可
+
+资源维护之后，核验并以 `cherry-pick -x` 回移官方提交
+[`65a63e4ec9c649bd5404ebcbbedb55aad5741d84`](https://github.com/rikkahub/rikkahub/commit/65a63e4ec9c649bd5404ebcbbedb55aad5741d84)
+（作者 re-ovo，2026-07-18，`docs(license): 改为纯 AGPL-3.0 许可证`）。
+该提交只更新 `LICENSE` 和三份 README，删除分段双重许可中的非商业和用户数附加限制；
+没有导入 3.x 功能代码，也没有撤销上述安全更新或 TinaIDE 适配。
+
+- 当前 `LICENSE` 与该上游提交的 GNU AGPL 第 3 版全文一致。
+- Git blob：`be3f7b28e564e7dd05eaf59d64adba1a4065ac0e`。
+- SHA-256（UTF-8、换行规范为 LF）：
+  `0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0`。
+- RikkaHub 部分继续受 AGPL-3.0 约束，不因此变成 GPL 或宽松许可；与 GPLv3 宿主组合时
+  依两份许可证的第 13 条处理，并保留对应源码、修改说明、版权与许可证文本。
+- TinaIDE 的审查依据、随 APK 展示的许可全文和源码入口、内容哈希门禁由宿主维护；
+  历史 `0.18.37` 构建的未解除门禁记录不追溯改写。
+
+发布者必须先推送本子模块，再提交宿主 gitlink，使最终产物的对应源码可被递归检出。
